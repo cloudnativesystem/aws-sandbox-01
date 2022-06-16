@@ -1,6 +1,7 @@
 # NACL RULES
 
 # TCP INBOUND
+/*
 resource "aws_network_acl_rule" "cluster_nacl_rule_100" {
   network_acl_id = module.vpc.cluster_nacl_id
   rule_number    = 100
@@ -105,20 +106,20 @@ resource "aws_network_acl_rule" "cluster_nacl_rule_170" {
   from_port      = 0
   to_port        = 65535
 }
-
+*/
 # ICMP OUTBOUND
-resource "aws_network_acl_rule" "cluster_nacl_rule_180" {
-  network_acl_id = module.vpc.cluster_nacl_id
-  rule_number    = 180
-  egress         = true
-  protocol       = 1
-  rule_action    = "allow"
-  cidr_block     = "0.0.0.0/0"
-  from_port      = -1
-  to_port        = -1
-  icmp_type      = -1
-  icmp_code      = -1
-}
+#resource "aws_network_acl_rule" "cluster_nacl_rule_180" {
+#  network_acl_id = module.vpc.cluster_nacl_id
+#  rule_number    = 180
+#  egress         = true
+#  protocol       = 1
+#  rule_action    = "allow"
+#  cidr_block     = "0.0.0.0/0"
+#  from_port      = -1
+#  to_port        = -1
+#  icmp_type      = -1
+#  icmp_code      = -1
+#}
 
 # SECURITY GROUP RULES
 
