@@ -1,7 +1,7 @@
 # vpc.tfvars
 
 #
-vpc_name = "onekloud-infra-dev"
+vpc_name = "swagwatch-infra-dev"
 
 #
 vpc_cidr = "10.155.0.0/16"
@@ -20,7 +20,7 @@ enable_s3_endpoint = true
 
 #
 vpc_tags = {
-  "Name" = "onekloud-infra-vpc-ddddev"
+  "Name" = "swagwatch-infra-dev"
 }
 
 #
