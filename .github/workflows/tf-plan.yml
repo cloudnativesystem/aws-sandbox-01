@@ -1,0 +1,111 @@
+name: terraform-plan
+
+on: pull_request
+
+jobs:
+
+  build-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@1.0.0
+        with:
+          # By default (in a non-pull request build) you get HEAD of 'master'
+          ref: ${{ steps.load-pr.outputs.head_sha }}
+          submodules: 'true'
+          token: ${{ secrets.DEPLOY_USER_PAT }} # Needed for private submodules
+
+      - id: set-matrix
+        run: |
+          make
+          WORKSPACE=$(cat env.json)
+          echo "::set-output name=workspace_matrix::$WORKSPACE"
+    outputs:
+      workspace_matrix: ${{ steps.set-matrix.outputs.workspace_matrix }}
+
+  terraform-plan:
+    needs: build-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: ${{ fromJson(needs.build-matrix.outputs.workspace_matrix) }}
+    
+    name: ${{ matrix.workspace }}
+    runs-on: ubuntu-latest
+
+    env:
+      WORKSPACE: ${{ matrix.workspace }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_K_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_S_ID }}
+      AWS_REGION: 'us-east-2'
+    
+    steps:
+      
+      - name: Checkout
+        uses: actions/checkout@1.0.0
+        with:
+          # By default (in a non-pull request build) you get HEAD of 'master'
+          ref: ${{ steps.load-pr.outputs.head_sha }}
+          submodules: 'true'
+          token: ${{ secrets.DEPLOY_USER_PAT }} # Needed for private submodules
+      
+      - name: Build Workspace / Environment
+        id: build-environment
+        env:
+          OK_ENV: ${{ matrix.workspace }}
+        run: |
+          cd environments/$OK_ENV
+          make
+          ls -la
+
+      - name: Setup Terraform
+        id: terraform-setup
+        run: |
+          sudo apt-get update && sudo apt-get install -y gnupg software-properties-common curl
+          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+          sudo apt-get update && sudo apt-get install terraform
+          terraform -v
+      
+      - name: terraform init
+        id: terraform-init
+        env:
+          OK_ENV: ${{ matrix.workspace }}
+        run: terraform -chdir=environments/$OK_ENV init
+      
+      - name: terraform format
+        id: terraform-format
+        env:
+          OK_ENV: ${{ matrix.workspace }}
+        run: terraform -chdir=environments/$OK_ENV fmt -check -diff
+      
+      - name: terraform validate
+        id: terraform-validate
+        env:
+          OK_ENV: ${{ matrix.workspace }}
+        run: terraform -chdir=environments/$OK_ENV validate
+      
+      - name: terraform plan
+        id: terraform-plan
+        env:
+          OK_ENV: ${{ matrix.workspace }}
+        run: |
+          set -eu
+          tf_plan_out=$(terraform -chdir=environments/$OK_ENV plan -out tfplan.binary)
+          echo "::set-output name=tf_plan_out::$tf_plan_out"
+      
+      - name: Convert Terraform Plan To JSON
+        id: terraform-json
+        env:
+          OK_ENV: ${{ matrix.workspace }}
+        run: terraform -chdir=environments/$OK_ENV show -json tfplan.binary | jq -r '.' > tfplan.json
+      
+      - name: Install Checkov
+        id: install-checkov
+        env:
+          OK_ENV: ${{ matrix.workspace }}
+        run: pip3 install checkov
+      
+      - name: Static Code Security Analysis
+        id: run-checkov
+        run: checkov -f tfplan.json -s --quiet

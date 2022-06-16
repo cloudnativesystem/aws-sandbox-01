@@ -1,0 +1,156 @@
+name: terraform-apply
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  terraform-apply:
+    # Only run for comments starting with "terraform apply" in a pull request.
+    if: >
+      startsWith(github.event.comment.body, 'terraform apply')
+      && startsWith(github.event.issue.pull_request.url, 'https://')
+  
+    name: terraform-apply
+    runs-on: ubuntu-latest
+
+    env:
+      WORKSPACE: ${{ matrix.workspace }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_K_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_S_ID }}
+      AWS_REGION: 'us-east-2'
+    
+    steps:
+
+      - name: 'Load PR Details'
+        id: load-pr
+        run: |
+          set -eu
+          resp=$(curl -sSf \
+            --url ${{ github.event.issue.pull_request.url }} \
+            --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            --header 'content-type: application/json')
+          sha=$(jq -r '.head.sha' <<< "$resp")
+          echo "::set-output name=head_sha::$sha"
+          comments_url=$(jq -r '.comments_url' <<< "$resp")
+          echo "::set-output name=comments_url::$comments_url"
+      
+      - name: Determine Command
+        id: determine-command
+        uses: actions/github-script@0.2.0
+        with:
+          github-token: ${{github.token}}
+          script: |
+            // console.log(context)
+            const body = context.payload.comment.body.toLowerCase().trim()
+            console.log("Detected PR comment: " + body)
+            commandArray = body.split(/\s+/)
+            if (commandArray[0] == "terraform") {
+              action = commandArray[1]
+              switch(action) {
+                case "apply":
+                  console.log("Validating apply action is for this environment")
+                  if(typeof commandArray[2] === 'undefined') {
+                    console.log("Environment is required")
+                    console.log("::set-output name=do_apply::false")
+                    console.log("::set-output name=ok_env::undefined")
+                  } else if (commandArray[2] == 'dev') {
+                    console.log("running terraform apply in this environment " + commandArray[2])
+                    console.log("::set-output name=do_apply::true")
+                    console.log("::set-output name=ok_env::dev")
+                  } else {
+                    console.log("terraform apply command is not for this job")
+                    console.log("::set-output name=do_apply::false")
+                  }
+                  break
+              }
+            }
+      
+      - name: Checkout
+        if: steps.determine-command.outputs.do_apply == 'true'
+        uses: actions/checkout@1.0.0
+        with:
+          # By default (in a non-pull request build) you get HEAD of 'master'
+          ref: ${{ steps.load-pr.outputs.head_sha }}
+          submodules: 'true'
+          token: ${{ secrets.DEPLOY_USER_PAT }} # Needed for private submodules
+      
+      - name: Build Workspace / Environment
+        if: steps.determine-command.outputs.do_apply == 'true'
+        id: build-environment
+        env:
+          OK_ENV: ${{ steps.determine-command.outputs.ok_env }}
+        run: |
+          cd environments/$OK_ENV
+          make
+          ls -la
+      
+      - name: Setup Terraform
+        if: steps.determine-command.outputs.do_apply == 'true'
+        id: terraform-setup
+        run: |
+          sudo apt-get update && sudo apt-get install -y gnupg software-properties-common curl
+          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+          sudo apt-get update && sudo apt-get install terraform
+          terraform -v
+      
+      - name: terraform init
+        if: steps.determine-command.outputs.do_apply == 'true'
+        id: terraform-init
+        env:
+          OK_ENV: ${{ steps.determine-command.outputs.ok_env }}
+        run: terraform -chdir=environments/$OK_ENV init
+      
+      - name: terraform format
+        if: steps.determine-command.outputs.do_apply == 'true'
+        id: terraform-format
+        env:
+          OK_ENV: ${{ steps.determine-command.outputs.ok_env }}
+        run: terraform -chdir=environments/$OK_ENV fmt -check -diff
+      
+      - name: terraform validate
+        if: steps.determine-command.outputs.do_apply == 'true'
+        id: terraform-validate
+        env:
+          OK_ENV: ${{ steps.determine-command.outputs.ok_env }}
+        run: terraform -chdir=environments/$OK_ENV validate
+      
+      - name: terraform plan
+        if: steps.determine-command.outputs.do_apply == 'true'
+        id: terraform-plan
+        env:
+          OK_ENV: ${{ steps.determine-command.outputs.ok_env }}
+        run: |
+          set -eu
+          tf_plan_out=$(terraform -chdir=environments/$OK_ENV plan -no-color -out tfplan.binary)
+          echo "::set-output name=tf_plan_out::$tf_plan_out"
+      
+      - name: Convert Terraform Plan To JSON
+        if: steps.determine-command.outputs.do_apply == 'true'
+        id: terraform-json
+        env:
+          OK_ENV: ${{ steps.determine-command.outputs.ok_env }}
+        run: terraform -chdir=environments/$OK_ENV show -json tfplan.binary | jq -r '.' > tfplan.json
+      
+      - name: Install Checkov
+        if: steps.determine-command.outputs.do_apply == 'true'
+        id: install-checkov
+        env:
+          OK_ENV: ${{ steps.determine-command.outputs.ok_env }}
+        run: pip3 install checkov
+      
+      - name: Static Code Security Analysis
+        if: steps.determine-command.outputs.do_apply == 'true'
+        id: run-checkov
+        run: checkov -f tfplan.json -s --quiet
+      
+      - name: terraform apply
+        if: steps.determine-command.outputs.do_apply == 'true'
+        id: terraform-apply
+        env:
+          OK_ENV: ${{ steps.determine-command.outputs.ok_env }}
+        run: |
+          set -eu
+          tf_apply_out=$(terraform -chdir=environments/$OK_ENV apply tfplan.binary)
+          echo "::set-output name=tf_apply_out::$tf_apply_out"

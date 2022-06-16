@@ -1,0 +1,6 @@
+.onekloud-auto-docs
+onekloud-auto-docs
+.terraform
+.terraform.lock.hcl
+Makefile
+*.sh
