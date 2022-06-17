@@ -31,16 +31,7 @@ resource "random_string" "suffix" {
   special = false
 }
 
-/*data "terraform_remote_state" "dataplatform-iam" {
-  backend = "s3"
-
-  config = {
-    bucket = "h1-data-platform-non-prod-tf-state"
-    key    = "data-platform/dev_v1/iam/tf.state"
-    region = "us-east-2"
-  }
-}*/
-
+/*
 data "terraform_remote_state" "vpc" {
   backend = "s3"
 
@@ -82,3 +73,4 @@ module "eks" {
   }
 
 }
+*/
