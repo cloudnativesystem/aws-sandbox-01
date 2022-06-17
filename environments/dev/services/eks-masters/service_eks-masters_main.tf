@@ -53,17 +53,17 @@ data "terraform_remote_state" "vpc" {
 
 
 module "eks" {
-  source                  = "../../modules/eks-masters"
-  cluster_name            = local.cluster_name
+  source       = "../../modules/eks-masters"
+  cluster_name = local.cluster_name
   //cluster_role_arn        = data.terraform_remote_state.dataplatform-iam.outputs.cluster_role_arn
-  cluster_role_arn        = module.eks_master_iam.cluster_role_arn
-  cluster_version         = "1.21"
-  private_subnets         = data.terraform_remote_state.vpc.outputs.private_subnets
+  cluster_role_arn = module.eks_master_iam.cluster_role_arn
+  cluster_version  = "1.21"
+  private_subnets  = data.terraform_remote_state.vpc.outputs.private_subnets
   //dd_api_key              = data.aws_secretsmanager_secret_version.dd_api_key.secret_string
   //dd_api_key_arn          = data.aws_secretsmanager_secret_version.dd_api_key.arn
   //dd_app_key              = data.aws_secretsmanager_secret_version.dd_app_key.secret_string
   //external_secrets_region = var.region.Ohio
-  environment             = var.environment
+  environment = var.environment
   //public_ingress_cert_arn = data.aws_acm_certificate.k8s_ingress_certificate.arn
 
   tags = {
