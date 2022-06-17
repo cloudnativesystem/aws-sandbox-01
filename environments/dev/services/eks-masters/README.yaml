@@ -1,0 +1,187 @@
+---
+#
+# This is the canonical configuration for the `README.md`
+# Run `make readme` to rebuild the `README.md`
+#
+
+# Name of this project
+name: terraform-aws-vpc
+
+# Tags of this project
+tags:
+  - aws
+  - terraform
+  - terraform-modules
+  - platform
+  - vpc
+
+# Categories of this project
+categories:
+  - terraform-modules/networking
+
+# Logo for this project
+#logo: docs/logo.png
+
+# License of this project
+license: "APACHE2"
+
+# Canonical GitHub repo
+github_repo: cloudposse/terraform-aws-vpc
+
+# Badges to display
+badges:
+  - name: "Latest Release"
+    image: "https://img.shields.io/github/release/cloudposse/terraform-aws-vpc.svg"
+    url: "https://github.com/cloudposse/terraform-aws-vpc/releases/latest"
+  - name: "Slack Community"
+    image: "https://slack.cloudposse.com/badge.svg"
+    url: "https://slack.cloudposse.com"
+
+related:
+  - name: "terraform-aws-vpc-peering"
+    description: "Terraform module to create a peering connection between two VPCs"
+    url: "https://github.com/cloudposse/terraform-aws-vpc-peering"
+
+  - name: "terraform-aws-kops-vpc-peering"
+    description: "Terraform module to create a peering connection between a backing services VPC and a VPC created by Kops"
+    url: "https://github.com/cloudposse/terraform-aws-kops-vpc-peering"
+
+  - name: "terraform-aws-dynamic-subnets"
+    description: "Terraform module for public and private subnets provisioning in existing VPC"
+    url: "https://github.com/cloudposse/terraform-aws-dynamic-subnets"
+
+  - name: "terraform-aws-multi-az-subnets"
+    description: "Terraform module for multi-AZ public and private subnets provisioning"
+    url: "https://github.com/cloudposse/terraform-aws-multi-az-subnets"
+
+  - name: "terraform-aws-named-subnets"
+    description: "Terraform module for named subnets provisioning."
+    url: "https://github.com/cloudposse/terraform-aws-named-subnets"
+
+# Short description of this project
+description: |-
+  This is a sample implementation of the terraform-aws-vpc module. All inputs to this
+  module are provided via the vpc.tfvars file and have been initialized with sample
+  values.
+
+# How to use this project
+examples: |-
+  ```hcl
+  # vpc_main.tf
+  module "vpc" {
+
+    source = "../../modules/vpc"
+    name   = var.vpc_name
+    cidr   = var.vpc_cidr
+
+    environment = var.environment
+    vpc_name    = var.vpc_name
+
+    azs             = var.vpc_azs
+    private_subnets = var.vpc_private_subnets
+    public_subnets  = var.vpc_public_subnets
+
+    enable_s3_endpoint = var.enable_s3_endpoint
+
+    tags = var.common_tags
+
+    vpc_tags = var.vpc_tags
+  }
+  ```
+
+  Initial Settings Provided Via vpc.tfvars:
+
+  ```hcl
+  # vpc.tfvars
+
+  #
+  vpc_name = "onekloud-infra-dev"
+
+  #
+  vpc_cidr = "10.155.0.0/16"
+
+  #
+  vpc_azs = ["us-east-2a"]
+
+  #
+  vpc_private_subnets = ["10.155.0.0/18"]
+
+  #
+  vpc_public_subnets = ["10.155.64.0/18"]
+
+  #
+  enable_s3_endpoint = true
+
+  #
+  vpc_tags = {
+    "Name" = "onekloud-infra-vpc-ddddev"
+  }
+
+  #
+  dns_private_zone_name = "development.swagwatch.io."
+
+  #
+  dns_public_zone_name = "development.swagwatch.io."
+
+  #
+  dns_reverse_zone_name = "10.155.in-addr.arpa."   
+  ```
+
+  VPC Peering Example - Place in service_vpc_main.tf
+
+  ```hcl
+  # vpc peering connection code
+  resource "aws_vpc_peering_connection" "onekloud_mgt_pvc" {
+   peer_owner_id = "AWS-ACCOUNT-ID"
+   peer_vpc_id   = "vpc-peer-id"
+   peer_region   = "us-east-2"
+   vpc_id        = module.vpc.vpc_id
+  
+   tags = {
+    "Name" = "dev-to-mgt-vpc-ctx"
+   }
+  }
+
+  # associated route table entry
+  resource "aws_route" "dev_to_mgt" {
+    route_table_id            = module.vpc.private_us_east_2a_rt_id
+    destination_cidr_block    = "CIDR-BLOCK-HERE"
+    vpc_peering_connection_id = aws_vpc_peering_connection.onekloud_mgt_pvc.id
+  }
+  ```
+
+  Datasource Example - Place in tf_datasources.tf
+
+  ```hcl
+  data "terraform_remote_state" "dev_vpc" {
+  backend = "s3"
+
+   config = {
+     bucket = "BUCKET-NAME"
+     key    = "BUCKET-NAME/dev/vpc/tf.state"
+     region = "us-east-2"
+   }
+  }
+  ```
+
+
+include:
+#  - "docs/targets.md"
+  - "docs/terraform.md"
+
+# Contributors to this project
+contributors:
+  - name: "Erik Osterman"
+    github: "osterman"
+  - name: "Igor Rodionov"
+    github: "goruha"
+  - name: "Andriy Knysh"
+    github: "aknysh"
+  - name: "Valeriy"
+    github: "drama17"
+  - name: "Vladimir"
+    github: "SweetOps"
+  - name: "Yonatan Koren"
+    github: "korenyoni"
+  - name: "RB"
+    github: "nitrocode"
