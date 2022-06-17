@@ -1,4 +1,4 @@
-output "cluster_endpoint" {
+/*output "cluster_endpoint" {
   description = "Endpoint for EKS control plane."
   value       = module.eks.cluster_endpoint
 }
@@ -13,4 +13,4 @@ output "cluster_id" {
 
 output "oidc_issuer_url" {
   value = module.eks.oidc_issuer_url
-}
+}*/
