@@ -1,4 +1,4 @@
-variable "region" {
+/*variable "region" {
   type = map(string)
   default = {
     "N_Virginia"   = "us-east-1"
@@ -12,5 +12,5 @@ variable "environment" {
   type        = string
   description = ""
   default     = "dev"
-}
+}*/
 
