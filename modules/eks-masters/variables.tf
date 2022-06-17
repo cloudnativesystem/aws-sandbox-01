@@ -70,6 +70,7 @@ variable "eks_oidc_root_ca_thumbprint" {
 }
 
 variable "external_secrets_region" {
+  default     = ""
   type        = string
   description = "Region to look for external secrets"
 }
@@ -81,6 +82,7 @@ variable "environment" {
 }
 
 variable "public_ingress_cert_arn" {
+  default     = ""
   type        = string
   description = "The ARN of the certificate to use"
 }
