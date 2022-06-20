@@ -1,3 +1,7 @@
+locals {
+  cluster_name = "var.cluster_name-${var.environment}-eks-${random_string.suffix.result}"
+}
+
 data "aws_caller_identity" "current" {}
 
 data "aws_eks_cluster" "cluster" {
@@ -22,39 +26,23 @@ provider "helm" {
   }
 }
 
-locals {
-  cluster_name = "sandbox-${var.environment}-eks-${random_string.suffix.result}"
-}
-
 resource "random_string" "suffix" {
   length  = 8
   special = false
 }
 
-
-data "terraform_remote_state" "vpc" {
-  backend = "s3"
-
-  config = {
-    bucket = "onekloud-swagwatch-infra"
-    key    = "onekloud-swagwatch-infra/dev/tf.state"
-    region = "us-east-2"
-  }
-}
-
-
 module "eks" {
   source           = "../../modules/eks-masters"
   cluster_name     = local.cluster_name
   cluster_role_arn = module.eks_master_iam.cluster_role_arn
-  cluster_version  = "1.21"
+  cluster_version  = var.cluster_version
   private_subnets  = data.terraform_remote_state.vpc.outputs.private_subnets
   environment      = var.environment
   vpc_id           = data.terraform_remote_state.vpc.outputs.vpc_id
 
   tags = {
     Environment = var.environment
-    Owner       = "data-platform"
+    Owner       = var.cluster_owner
   }
 
   node_k8s_labels = {

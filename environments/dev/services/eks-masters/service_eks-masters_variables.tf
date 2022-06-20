@@ -1,16 +1,14 @@
-/*variable "region" {
-  type = map(string)
-  default = {
-    "N_Virginia"   = "us-east-1"
-    "Ohio"         = "us-east-2"
-    "N_California" = "us-west-1"
-    "Oregon"       = "us-west-2"
-  }
+variable "cluster_name" {
+  type        = string
+  description = "Name Of EKS Cluster"
 }
 
-variable "environment" {
+variable "cluster_version" {
   type        = string
-  description = ""
-  default     = "dev"
-}*/
+  description = "K8S version of this cluster"
+}
 
+variable "cluster_owner" {
+  type        = string
+  description = "Owner Of This Cluster"
+}
