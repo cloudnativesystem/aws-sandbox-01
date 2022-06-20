@@ -1,5 +1,5 @@
 locals {
-  cluster_name = "var.cluster_name-${var.environment}-eks-${random_string.suffix.result}"
+  cluster_name = "${var.cluster_namez}-${var.environment}-eks-${random_string.suffix.result}"
 }
 
 data "aws_caller_identity" "current" {}
