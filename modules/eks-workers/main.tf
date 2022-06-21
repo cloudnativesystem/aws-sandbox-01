@@ -1,4 +1,3 @@
-data "aws_partition" "current" {}
 
 resource "aws_eks_node_group" "this" {
   node_group_name = "${var.cluster_name}-${var.node_group_settings.name}"
